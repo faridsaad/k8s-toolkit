@@ -1,0 +1,64 @@
+---
+# TODO:
+# All Nodes:
+# - Create /etc/hosts entries for each node
+# On Master:
+# kubeadm init --kubernetes-version 1.17.1 --pod-network-cidr 192.168.64.0/18
+# - Install Calico
+# wget https://tinyurl.com/yb4xturm -O rbac-kdd.yaml
+# wget https://tinyurl.com/y2vqsobb -O calico.yaml
+# kubectl apply -f rbac-kdd.yaml
+# kubectl apply -f calico.yaml
+# mkdir /root/.kube
+# cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+# chown $(id -u):$(id -g) $HOME/.kube/config
+#
+- hosts: all
+  vars:
+    k8s_package_version: "1.17.2-00"
+
+  tasks:
+  - name: set hostname to ansible name
+    hostname:
+      name: "{{ inventory_hostname }}"
+
+  - name: Update repos and packages
+    apt:
+      update_cache: yes
+      upgrade: yes 
+
+  - name: Add debian k8s repo
+    lineinfile:
+      create: yes
+      line: deb http://apt.kubernetes.io/ kubernetes-xenial main
+      path: /etc/apt/sources.list.d/kubernetes.list
+
+  - name: Add Google's apt key
+    apt_key: 
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+  - name: Update cache
+    apt:
+      update_cache: yes
+
+  - name: install k8s packages
+    apt:
+      name: [ "kubeadm={{ k8s_package_version }}", "kubelet={{ k8s_package_version }}", "kubectl={{ k8s_package_version }}", "docker.io" ]
+      state: present
+
+  - name:  mark hold k8s packages
+    dpkg_selections:
+      name: "{{ item }}"
+      selection: hold
+    with_items:
+    - "kubeadm"
+    - "kubelet"
+    - "kubectl"
+
+  - name: adjust network security
+    lineinfile:
+      path: /etc/sysctl.d/10-network-security.conf
+      line: "{{ item }}"
+    with_items:
+    - "net.ipv4.conf.default.rp_filter=1"
+    - "net.ipv4.conf.all.rp_filter=1"
