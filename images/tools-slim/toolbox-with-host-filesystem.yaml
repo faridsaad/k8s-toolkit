@@ -3,15 +3,15 @@ kind: Deployment
 metadata:
   generation: 1
   labels:
-    app: toolbox
-  name: toolbox
+    app: toolbox-mount
+  name: toolbox-mount
 spec:
   progressDeadlineSeconds: 600
   replicas: 1
   revisionHistoryLimit: 10
   selector:
     matchLabels:
-      app: toolbox
+      app: toolbox-mount
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -21,8 +21,12 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
-        app: toolbox
+        app: toolbox-mount
     spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+        operator: "Exists"
       containers:
       - image: faridsaad/tools-slim:1.02
         imagePullPolicy: IfNotPresent
@@ -33,9 +37,6 @@ spec:
         volumeMounts:
         - name: hostroot
           mountPath: /hostroot
-      - key: node-role.kubernetes.io/master
-        effect: NoSchedule
-        operator: "Exists"
       nodeSelector:
         node-role.kubernetes.io/master: ""
       dnsPolicy: ClusterFirst
